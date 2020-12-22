@@ -32,6 +32,7 @@ It should :
 
 - contain a short description of the change (preferably 50 characters or less)
 - be prefixed with one of the following tags
+  - wip(work in progress): partial implementation
   - fix : bug fix
   - feat or feature : new or updated feature
   - doc or docs : documentation updates
