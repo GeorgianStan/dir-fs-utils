@@ -60,7 +60,7 @@ This method will return the total size of a folder in bytes.
 
 ## Contributing
 
-Pull requests and stars are always welcome. Please check [guidelines](<(https://github.com/GeorgianStan/dir-fs-utils/blob/master/CONTRIBUTING.md)>).
+Pull requests and stars are always welcome. Please check the [guidelines](https://github.com/GeorgianStan/dir-fs-utils/blob/master/CONTRIBUTING.md).
 
 ## Stay in touch
 
