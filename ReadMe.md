@@ -6,6 +6,8 @@
     <img src='https://img.shields.io/github/stars/GeorgianStan/dir-fs-utils' alt='stars'>
     <img src='https://img.shields.io/github/license/GeorgianStan/dir-fs-utils' alt='license'>
     <img src='https://img.shields.io/github/package-json/v/GeorgianStan/dir-fs-utils?color=%237146f9&logo=javascript' alt='version'>
+    <a href="https://david-dm.org/georgianstan/dir-fs-utils" title="dependencies status"><img src="https://status.david-dm.org/gh/georgianstan/dir-fs-utils.svg"/></a>
+
 </div>
 
 `dir-fs-utils` is aiming to be a collection of the utility functions for directories build on top of the native `fs` module.
