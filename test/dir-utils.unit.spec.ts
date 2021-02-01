@@ -1,7 +1,7 @@
 /**
  * * Mocks
  */
-import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 
 /**
@@ -22,11 +22,9 @@ describe('Unit Tests', () => {
   describe('listFolderContent()', () => {
     // *
     it('It should throw an error in case that the supplied path is not accessible', async () => {
-      const spy = jest
-        .spyOn(fs, 'accessSync')
-        .mockImplementation((path: any) => {
-          throw new Error();
-        });
+      const spy = jest.spyOn(fsPromises, 'access').mockImplementation(() => {
+        throw new Error();
+      });
 
       await expect(DirUtils.listFolderContent('./')).rejects.toThrow(Error);
       expect(spy).toHaveBeenCalledTimes(1);
@@ -35,33 +33,27 @@ describe('Unit Tests', () => {
 
     // *
     it('Should read all the files from a folder', async () => {
-      jest.spyOn(fs, 'accessSync').mockImplementation((path: any) => true);
-      // ? just return the second value which will be the file from test-data
       jest
-        .spyOn(path, 'join')
-        //@ts-ignore
-        .mockImplementation((...paths) => paths[1]);
+        .spyOn(fsPromises, 'access')
+        .mockImplementation(() => Promise.resolve());
+
+      // ? just return the second value which will be the file from test-data
+      jest.spyOn(path, 'join').mockImplementation((...paths) => paths[1]);
 
       // ? mock two times in order to stop the execution, bcs is a recursive function
       jest
-        .spyOn(fs, 'readdir')
-        .mockImplementationOnce((path: any, cb) => {
-          //@ts-ignore
-          cb(undefined, ALL_PATHS);
-        })
-        .mockImplementationOnce((path: any, cb) => {
-          //@ts-ignore
-          cb(undefined, []); // ? []  will stop the function
-        });
+        .spyOn(fsPromises, 'readdir')
+        //@ts-ignore
+        .mockImplementationOnce(() => Promise.resolve(ALL_PATHS))
+        .mockImplementation(() => Promise.resolve([]));
 
-      jest.spyOn(fs, 'lstat').mockImplementation((path: any, cb) => {
+      jest.spyOn(fsPromises, 'lstat').mockImplementation((path: any): any => {
         let isDir = true;
         if (path.indexOf('.') !== -1) {
           isDir = false;
         }
 
-        //@ts-ignore
-        cb(undefined, { isDirectory: () => isDir });
+        return Promise.resolve({ isDirectory: () => isDir });
       });
 
       const readFiles: string[] = await DirUtils.listFolderContent('./');
@@ -72,11 +64,9 @@ describe('Unit Tests', () => {
   describe('getFolderSize()', () => {
     // *
     it('It should throw an error in case that the supplied path is not accessible', async () => {
-      const spy = jest
-        .spyOn(fs, 'accessSync')
-        .mockImplementation((path: any) => {
-          throw new Error();
-        });
+      const spy = jest.spyOn(fsPromises, 'access').mockImplementation(() => {
+        throw new Error();
+      });
 
       await expect(DirUtils.getFolderSize('./')).rejects.toThrow(Error);
       expect(spy).toHaveBeenCalledTimes(1);
@@ -85,33 +75,30 @@ describe('Unit Tests', () => {
 
     // *
     it('Should return the total size of the files', async () => {
-      jest.spyOn(fs, 'accessSync').mockImplementation((path: any) => true);
-      // ? just return the second value which will be the file from test-data
       jest
-        .spyOn(path, 'join')
-        //@ts-ignore
-        .mockImplementation((...paths) => paths[1]);
+        .spyOn(fsPromises, 'access')
+        .mockImplementation(() => Promise.resolve());
+
+      // ? just return the second value which will be the file from test-data
+      jest.spyOn(path, 'join').mockImplementation((...paths) => paths[1]);
 
       // ? mock two times in order to stop the execution, bcs is a recursive function
       jest
-        .spyOn(fs, 'readdir')
-        .mockImplementationOnce((path: any, cb) => {
-          //@ts-ignore
-          cb(undefined, ALL_PATHS);
-        })
-        .mockImplementationOnce((path: any, cb) => {
-          //@ts-ignore
-          cb(undefined, []); // ? []  will stop the function
-        });
+        .spyOn(fsPromises, 'readdir')
+        //@ts-ignore
+        .mockImplementationOnce(() => Promise.resolve(ALL_PATHS))
+        .mockImplementation(() => Promise.resolve([]));
 
-      jest.spyOn(fs, 'lstat').mockImplementation((path: any, cb) => {
+      jest.spyOn(fsPromises, 'lstat').mockImplementation((path: any): any => {
         let isDir = true;
         if (path.indexOf('.') !== -1) {
           isDir = false;
         }
 
-        //@ts-ignore
-        cb(undefined, { isDirectory: () => isDir, size: EACH_FILE_SIZE });
+        return Promise.resolve({
+          isDirectory: () => isDir,
+          size: EACH_FILE_SIZE,
+        });
       });
 
       const totalSize: number = await DirUtils.getFolderSize('./');
