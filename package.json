@@ -1,6 +1,6 @@
 {
   "name": "dir-fs-utils",
-  "version": "1.0.2",
+  "version": "1.1.2",
   "description": "A NodeJS library that creates several utility functions over the native fs module for directories",
   "main": "./dist/dir-utils.js",
   "types": "./dist/dir-utils.d.ts",
