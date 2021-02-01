@@ -1,8 +1,19 @@
 /**
  * * Dependencies
  */
-import { lstat, readdir, Stats, accessSync } from 'fs';
-import { join } from 'path';
+import {
+  promises as fsPromises,
+  constants as FsConstants,
+  Stats as FsStats,
+} from 'fs';
+const { COPYFILE_EXCL } = FsConstants;
+
+import * as path from 'path';
+
+/**
+ * * Types
+ */
+import { UnwrapOptions } from './@types';
 
 class Class {
   /**
@@ -10,50 +21,24 @@ class Class {
    */
 
   /**
-   * * readDirPromisify
-   * ? readdir as promise
-   * @param path
-   */
-  #readDirPromisify = async (path: string): Promise<string[]> => {
-    return new Promise((resolve) => {
-      readdir(path, (err: any, files: string[]) => {
-        resolve(files || []);
-      });
-    });
-  };
-
-  /**
-   * * lstatPromisify()
-   * ? lstat as promise
-   * @param path
-   */
-  #lstatPromisify = async (path: string): Promise<Stats> => {
-    return new Promise((resolve) => {
-      lstat(path, (err: any, stats: Stats) => {
-        resolve(stats);
-      });
-    });
-  };
-
-  /**
    * * Public methods
    */
-  async listFolderContent(path: string): Promise<string[]> {
+  async listFolderContent(folderPath: string): Promise<string[]> {
     try {
-      accessSync(path);
+      await fsPromises.access(folderPath);
     } catch (err) {
       throw new Error('The supplied path is not accessible');
     }
 
     const output: string[] = [];
 
-    const clojure = async (path: string) => {
-      const files: string[] = await this.#readDirPromisify(path);
+    const clojure = async (folderPath: string) => {
+      const files: string[] = await fsPromises.readdir(folderPath);
       await Promise.all(
         files.map(async (file: string) => {
-          const filePath = join(path, file);
+          const filePath = path.join(folderPath, file);
 
-          const stats: Stats = await this.#lstatPromisify(filePath);
+          const stats: FsStats = await fsPromises.lstat(filePath);
           if (stats.isDirectory()) {
             await clojure(filePath);
             return;
@@ -64,28 +49,28 @@ class Class {
       );
     };
 
-    await clojure(path);
+    await clojure(folderPath);
 
     return output;
   }
 
-  async getFolderSize(path: string): Promise<number> {
+  async getFolderSize(folderPath: string): Promise<number> {
     try {
-      accessSync(path);
+      await fsPromises.access(folderPath);
     } catch (err) {
       throw new Error('The supplied path is not accessible');
     }
 
     let totalSize = 0;
 
-    const clojure = async (path: string) => {
-      const files: string[] = await this.#readDirPromisify(path);
+    const clojure = async (folderPath: string) => {
+      const files: string[] = await fsPromises.readdir(folderPath);
 
       await Promise.all(
         files.map(async (file: string) => {
-          const filePath = join(path, file);
+          const filePath = path.join(folderPath, file);
 
-          const stats: Stats = await this.#lstatPromisify(filePath);
+          const stats: FsStats = await fsPromises.lstat(filePath);
           if (stats.isDirectory()) {
             return clojure(filePath);
           }
@@ -95,9 +80,95 @@ class Class {
       );
     };
 
-    await clojure(path);
+    await clojure(folderPath);
 
     return totalSize;
+  }
+
+  /**
+   * ? Unwrap a folder
+   * @param folderPath
+   * @param keepFolder -
+   */
+  async unwrap(
+    folderPath: string,
+    options?: UnwrapOptions,
+  ): Promise<Map<string, string>> {
+    try {
+      await fsPromises.access(folderPath);
+    } catch {
+      throw new Error('The supplied path is not accessible');
+    }
+
+    // ? check if is a directory
+    const stats: FsStats = await fsPromises.lstat(folderPath);
+    if (!stats.isDirectory()) {
+      throw new Error('The supplied path is not a directory');
+    }
+
+    // ? get the folder name
+    const folderName: string = path.basename(folderPath);
+
+    // ? create a map with the paths that needs to be unwraped
+    // ? originalPath and targetPath
+    const pathsToUnwrap: Map<string, string> = new Map();
+    const successfulUnwrapps: Map<string, string> = new Map();
+    const failedUnwrapps: Map<string, string> = new Map();
+
+    const clojure = async (folderPath: string) => {
+      const files: string[] = await fsPromises.readdir(folderPath);
+      await Promise.all(
+        files.map(async (file: string) => {
+          const filePath = path.join(folderPath, file);
+
+          const stats: FsStats = await fsPromises.lstat(filePath);
+          if (stats.isDirectory()) {
+            return clojure(filePath);
+          }
+
+          const targetPath: string = filePath.replace(
+            path.sep + folderName,
+            '',
+          );
+          pathsToUnwrap.set(filePath, targetPath);
+        }),
+      );
+    };
+
+    await clojure(folderPath);
+
+    // ? unwrap the paths
+    for (let [filePath, targetPath] of pathsToUnwrap) {
+      try {
+        // ? create the folder path if it doesn't exist
+        const targetFolderPath: string = path.dirname(targetPath);
+
+        try {
+          await fsPromises.access(targetFolderPath);
+        } catch {
+          await fsPromises.mkdir(targetFolderPath, { recursive: true });
+        }
+
+        await fsPromises.copyFile(
+          filePath,
+          targetPath,
+          options?.force ? null : COPYFILE_EXCL,
+        );
+
+        successfulUnwrapps.set(filePath, targetPath);
+      } catch {
+        failedUnwrapps.set(filePath, targetPath);
+      }
+    }
+
+    // ? delete the source folder if all the files were removed
+    if (!options?.keepFolder) {
+      for (let filePath of successfulUnwrapps.keys()) {
+        await fsPromises.unlink(filePath);
+      }
+    }
+
+    return failedUnwrapps;
   }
 }
 
